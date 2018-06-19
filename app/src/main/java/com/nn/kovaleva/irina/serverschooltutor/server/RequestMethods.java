@@ -13,6 +13,8 @@ import android.widget.ArrayAdapter;
 //import com.nn.kovaleva.irina.serverschooltutor.Model.Actor;
 import com.nn.kovaleva.irina.serverschooltutor.Model.ChatMessage;
 import com.nn.kovaleva.irina.serverschooltutor.Model.Education;
+import com.nn.kovaleva.irina.serverschooltutor.Model.Lesson;
+import com.nn.kovaleva.irina.serverschooltutor.Model.LessonsList;
 import com.nn.kovaleva.irina.serverschooltutor.Model.LogIn;
 import com.nn.kovaleva.irina.serverschooltutor.Model.MessageList;
 import com.nn.kovaleva.irina.serverschooltutor.Model.User;
@@ -24,6 +26,7 @@ import com.nn.kovaleva.irina.serverschooltutor.provider.tables.ChatTable;
 import com.nn.kovaleva.irina.serverschooltutor.provider.tables.Contacts;
 import com.nn.kovaleva.irina.serverschooltutor.provider.tables.EducationTable;
 //import com.nn.kovaleva.irina.schooltutor.provider.tables.SubjectTable;
+import com.nn.kovaleva.irina.serverschooltutor.provider.tables.LessonsTable;
 import com.nn.kovaleva.irina.serverschooltutor.provider.tables.UserInfo;
 import com.nn.kovaleva.irina.serverschooltutor.provider.tables.UserSubjectTable;
 import com.nn.kovaleva.irina.serverschooltutor.provider.tables.UserTable;
@@ -207,6 +210,41 @@ public class RequestMethods {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
+    public static String addLesson(Context context, String request){
+        Log.d(TAG, "addLesson: ");
+        String response = null;
+        Lesson lesson = new Lesson();
+        try {
+            JSONObject obj = new JSONObject(request);
+            lesson.fromJson(obj);
+        } catch (JSONException e){
+            Log.e(TAG, "addLesson: JSONException: " + e.getMessage());
+            lesson = null;
+        }
+
+        if (lesson != null){
+            ContentValues contentValues = new ContentValues();
+            contentValues.put(LessonsTable.TUTOR_ID, lesson.tutor.userId);
+            contentValues.put(LessonsTable.STUDENT_ID, lesson.student.userId);
+            contentValues.put(LessonsTable.ADDRESS, lesson.address);
+            contentValues.put(LessonsTable.COST, lesson.cost);
+            contentValues.put(LessonsTable.DURATION, lesson.duration);
+            contentValues.put(LessonsTable.START_TIME, lesson.startTime);
+            contentValues.put(LessonsTable.SUBJECT_ID, lesson.theme);
+            if (context.getContentResolver().insert(LessonsTable.CONTENT_URI, contentValues) == null){
+                response = "{\"message\":\"Internal Server Error\",\"errorCode\":501}";
+                return response;
+            } else {
+                response = "{\"message\":\"Ok\",\"errorCode\":0}";
+            }
+        } else {
+            response = "{\"message\":\"Response Error\",\"errorCode\":500}";
+        }
+
+        return response;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public static String editProfile(Context context, String request){
         Log.d(TAG, "editProfile: try to save changes");
         String response = null;
@@ -352,6 +390,71 @@ public class RequestMethods {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
+    public static String getUsersLessons(Context context, String request){
+        Log.d(TAG, "getUsersLessons: ");
+        String response = null;
+        String[] requests = request.split(" ");
+        String id = requests[0];
+        boolean ifTutor = requests[1].equals(String.valueOf(1));
+
+        String[] selectionArgs;
+        selectionArgs = new String[]{id};
+
+//        ArrayList<Integer> indexes = new ArrayList<>();
+        LessonsList lessonsList = new LessonsList();
+        Cursor cursor;
+        if (ifTutor) {
+            cursor = context.getContentResolver().query(LessonsTable.CONTENT_URI, null,
+                    LessonsTable.TUTOR_ID + "= ?", selectionArgs, null);
+        } else {
+            cursor = context.getContentResolver().query(LessonsTable.CONTENT_URI, null,
+                    LessonsTable.STUDENT_ID + "= ?", selectionArgs, null);
+        }
+        if (cursor != null && cursor.moveToFirst()) {
+            do{
+                Lesson lesson = new Lesson();
+                int partnerId;
+                if (ifTutor) {
+                    partnerId = cursor.getInt(cursor.getColumnIndex(LessonsTable.STUDENT_ID));
+                } else {
+                    partnerId = cursor.getInt(cursor.getColumnIndex(LessonsTable.TUTOR_ID));
+                }
+                String userResponse = getUserById(context, String.valueOf(partnerId));
+                User user = new User();
+                JSONObject obj = null;
+                try {
+                    obj = new JSONObject(userResponse);
+                    user.fromJson(obj);
+                } catch (JSONException e) {
+                    Log.e(TAG, "getUsersLessons: JSONException: " + e.getMessage());
+                }
+                if (ifTutor){
+                    lesson.student = user;
+                } else {
+                    lesson.tutor = user;
+                }
+                lesson.address = cursor.getString(cursor.getColumnIndex(LessonsTable.ADDRESS));
+                lesson.cost = cursor.getInt(cursor.getColumnIndex(LessonsTable.COST));
+                lesson.duration = cursor.getInt(cursor.getColumnIndex(LessonsTable.DURATION));
+                lesson.startTime = cursor.getString(cursor.getColumnIndex(LessonsTable.START_TIME));
+                lesson.theme = cursor.getString(cursor.getColumnIndex(LessonsTable.SUBJECT_ID));
+
+//                String[] selectionArgs1 = new String[]{String.valueOf(partnerId)};
+//                Cursor cursor1 = context.getContentResolver().query(LessonsTable.CONTENT_URI, null,
+//                        LessonsTable.TUTOR_ID + "= ?", selectionArgs, null);
+                lessonsList.lessonList.add(lesson);
+            } while (cursor.moveToNext());
+            lessonsList.message = "Ok";
+            lessonsList.errorCode = 0;
+            response = lessonsList.toJson().toString();
+        } else {
+            response = "{\"message\":\"Lessons not found\",\"errorCode\":400}";
+        }
+        return response;
+    }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public static String sendMessage(Context context, String request){
         Log.d(TAG, "sendMessage: ");
         String response = null;
@@ -403,6 +506,28 @@ public class RequestMethods {
 
         } else {
             response = "{\"message\":\"Request error\",\"errorCode\":500}";
+        }
+        return response;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public static String isFriend(Context context, String request){
+        Log.d(TAG, "isFriend: ");
+        String response = null;
+        ChatMessage message = new ChatMessage();
+        String[] indexes = request.split(" ");
+        String idFirst = indexes[0];
+        String idSecond = indexes[1];
+        String[] selectionArgs;
+        selectionArgs = new String[]{idFirst, idSecond, idSecond, idFirst};
+        Cursor cursor = context.getContentResolver().query(Contacts.CONTENT_URI, null,
+                "(" + Contacts.USER_FIRST_ID + "= ? AND " + Contacts.USER_SECOND_ID + "= ?) OR ("
+                        + Contacts.USER_FIRST_ID + "= ? AND " + Contacts.USER_SECOND_ID + "= ?)",
+                selectionArgs, null);
+        if (cursor != null && cursor.getCount() == 1){
+            response = "{\"message\":\"Ok\",\"errorCode\":0}";
+        } else {
+            response = "{\"message\":\"not friends\",\"errorCode\":400}";
         }
         return response;
     }

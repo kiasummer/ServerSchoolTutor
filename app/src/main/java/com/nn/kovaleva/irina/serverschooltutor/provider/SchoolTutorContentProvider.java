@@ -133,6 +133,10 @@ public class SchoolTutorContentProvider extends ContentProvider{
                 queryBuilder.setTables(Contacts.TABLE_NAME);
                 break;
             }
+            case LESSONTABLE:{
+                queryBuilder.setTables(LessonsTable.TABLE_NAME);
+                break;
+            }
             default:{
                 return null;
             }
@@ -211,6 +215,14 @@ public class SchoolTutorContentProvider extends ContentProvider{
                     long rowId = db.insert(Contacts.TABLE_NAME, null, values);
                     if (rowId >= 0){
                         Uri noteUri = ContentUris.withAppendedId(Contacts.CONTENT_URI, rowId);
+                        getContext().getContentResolver().notifyChange(noteUri, null);
+                        return noteUri;
+                    }
+                }
+                case LESSONTABLE:{
+                    long rowId = db.insert(LessonsTable.TABLE_NAME, null, values);
+                    if (rowId >= 0){
+                        Uri noteUri = ContentUris.withAppendedId(LessonsTable.CONTENT_URI, rowId);
                         getContext().getContentResolver().notifyChange(noteUri, null);
                         return noteUri;
                     }
@@ -306,7 +318,7 @@ public class SchoolTutorContentProvider extends ContentProvider{
 
         public static final String createLessonTable = String.format("CREATE TABLE %s " +
                         "(%s INTEGER PRIMARY KEY AUTOINCREMENT, %s INTEGER, " +
-                        "%s INTEGER, %s INTEGER, %s TEXT, %s STRING, %s INTEGER, %s INTEGER);",
+                        "%s INTEGER, %s TEXT, %s TEXT, %s STRING, %s INTEGER, %s INTEGER);",
                 LessonsTable.TABLE_NAME, LessonsTable._ID, LessonsTable.TUTOR_ID,
                 LessonsTable.STUDENT_ID, LessonsTable.SUBJECT_ID, LessonsTable.ADDRESS,
                 LessonsTable.START_TIME, LessonsTable.DURATION, LessonsTable.COST);

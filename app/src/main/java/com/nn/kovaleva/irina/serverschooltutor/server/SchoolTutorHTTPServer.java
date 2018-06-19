@@ -77,6 +77,14 @@ public class SchoolTutorHTTPServer {
             }
         });
 
+        mServer.post("/getUsersLessons", new HttpServerRequestCallback() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+                response.send(RequestMethods.getUsersLessons(mContext, ((StringBody)request.getBody()).get()));
+            }
+        });
+
         mServer.post("/sendMessage", new HttpServerRequestCallback() {
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
@@ -90,6 +98,22 @@ public class SchoolTutorHTTPServer {
             @Override
             public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
                 response.send(RequestMethods.getChatHistory(mContext, ((StringBody)request.getBody()).get()));
+            }
+        });
+
+        mServer.post("/isFriend", new HttpServerRequestCallback() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+                response.send(RequestMethods.isFriend(mContext, ((StringBody)request.getBody()).get()));
+            }
+        });
+
+        mServer.post("/addLesson", new HttpServerRequestCallback() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void onRequest(AsyncHttpServerRequest request, AsyncHttpServerResponse response) {
+                response.send(RequestMethods.addLesson(mContext, ((StringBody)request.getBody()).get()));
             }
         });
 
